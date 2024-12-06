@@ -1,1 +1,131 @@
+% Given
+beta0 = 0.3;            % Base transmission rate
+A = 5;                  % Amplitude of variation
+gamma = 0.1;            % Recovery rate
+h = 0.1;                % Time step (days)
+T = 30;                 % Total time (days)
+N = round(T / h);       % Number of time steps
+t = (0:N-1) * h;        % Time vector
+
+
+S0 = 990; % Initial conditions
+I0 = 10; 
+R0 = 0; 
+
+% Define beta(t)
+omega_daily = 2 * pi * 365 / 365; % Angular frequency for daily variation
+beta_t = @(t) beta0 * (1 + A * sin(omega_daily * t));
+
+% Initialize variables
+S = zeros(1, N); 
+I = zeros(1, N); 
+R = zeros(1, N);
+
+S(1) = S0; 
+I(1) = I0; 
+R(1) = R0;
+
+% Run the SIR model
+for i = 1:N-1
+    dS = -beta_t(t(i)) * S(i) * I(i) / (S(i) + I(i) + R(i));
+    dI = beta_t(t(i)) * S(i) * I(i) / (S(i) + I(i) + R(i)) - gamma * I(i);
+    dR = gamma * I(i);
+    
+    S(i+1) = S(i) + dS * h;
+    I(i+1) = I(i) + dI * h;
+    R(i+1) = R(i) + dR * h;
+end
+
+% Plot S(t), I(t), and R(t)
+figure;
+plot(t, S, 'b', 'DisplayName', 'S(t)');
+hold on;
+plot(t, I, 'r', 'DisplayName', 'I(t)');
+plot(t, R, 'g', 'DisplayName', 'R(t)');
+xlabel('Time (days)');
+ylabel('Population');
+legend;
+title('SIR Model with Periodic Transmission Rate');
+grid on;
+
+
+%
+% Q3. 
+% Yes there are periodic fluctuations in the signals. This is because the
+% transmission rate oscillates and that, in turn, affects the
+% susceptibility, infection, and recovery rates.
+
+
+% Fast Fourier Transform
+freq = (0:N/2-1) / T; % Frequency vector (up to Nyquist limit)
+
+S_fft = fft(S); % Fourier Transform of S(t)
+S_fft_abs = abs(S_fft(1:N/2)); % Absolute value of FFT (spectrum)
+
+I_fft = fft(I); % Fourier Transform of I(t)
+I_fft_abs = abs(I_fft(1:N/2)); % Absolute value of FFT (spectrum)
+
+R_fft = fft(R); % Fourier Transform of R(t)
+R_fft_abs = abs(R_fft(1:N/2)); % Absolute value of FFT (spectrum)
+
+% Plot Fourier Spectrum
+figure;
+plot(freq, I_fft_abs, 'r');
+xlabel('Frequency (1/days)');
+ylabel('|I(f)|');
+title('Fourier Spectrum of I(t)');
+grid on;
+
+% Repeat for weekly periodicity
+omega_weekly = 2 * pi * 100 / 365; % Angular frequency for ~3.65-day variation
+beta_t_weekly = @(t) beta0 * (1 + A * sin(omega_weekly * t));
+
+% Reset initial conditions
+S(1) = S0; I(1) = I0; R(1) = R0;
+
+% Run SIR model for weekly periodicity
+for i = 1:N-1
+    dS = -beta_t_weekly(t(i)) * S(i) * I(i) / (S(i) + I(i) + R(i));
+    dI = beta_t_weekly(t(i)) * S(i) * I(i) / (S(i) + I(i) + R(i)) - gamma * I(i);
+    dR = gamma * I(i);
+    
+    S(i+1) = S(i) + dS * h;
+    I(i+1) = I(i) + dI * h;
+    R(i+1) = R(i) + dR * h;
+end
+
+% Plot S(t), I(t), and R(t) for weekly periodicity
+figure;
+plot(t, S, 'b', 'DisplayName', 'S(t)');
+hold on;
+plot(t, I, 'r', 'DisplayName', 'I(t)');
+plot(t, R, 'g', 'DisplayName', 'R(t)');
+xlabel('Time (days)');
+ylabel('Population');
+legend;
+title('SIR Model with Periodic Transmission Rate (Weekly)');
+grid on;
+
+
+% Perform Fourier Transform for weekly periodicity
+I_fft_weekly = fft(I); % Fourier Transform of I(t) for weekly periodicity
+I_fft_abs_weekly = abs(I_fft_weekly(1:N/2)); % Absolute value of FFT (spectrum)
+
+% Plot Fourier Spectrum for weekly periodicity
+figure;
+plot(freq, I_fft_abs_weekly, 'b');
+xlabel('Frequency (1/days)');
+ylabel('|I(f)|');
+title('Fourier Spectrum of I(t) (Weekly)');
+grid on;
+
+%
+% Q5
+% It does make sense as the peaks in the spectrum for infected cases happen
+% at points that are multiples of omega.
+
+%
+% Q6
+% The peaks shift to lower values because the omega value gets smaller
+% and causes the transmission rate to oscillate slower.
 
