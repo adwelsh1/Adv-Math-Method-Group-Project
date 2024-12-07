@@ -1,1 +1,180 @@
+clc;
+clear all;
 
+beta = 0.3;
+gamma = 0.1;
+T = 100;
+h = 2;
+t1 = 0:h:T;
+t2 = 1:h:T;
+disp(t1);
+disp(t2);
+S0 = 990;
+I0 = 10;
+R0 = 0;
+N = 1000;
+
+S = zeros(1, T/h + 1);
+I = zeros(1, T/h + 1);
+R = zeros(1, T/h + 1);
+
+S(1) = S0;
+I(1) = I0;
+R(1) = R0;
+
+dSdt = @(S,I) (-beta/N)*S*I;
+dIdt = @(S,I) (beta/N)*S*I -gamma*I;
+dRdt = @(I) gamma*I;
+
+for t = 1:T/h
+    dS = dSdt(S(t), I(t)) * h;
+    dI = dIdt(S(t), I(t)) * h;
+    dR = dRdt(I(t)) * h;
+    S(t+1) = S(t) + dS;
+    I(t+1) = I(t) + dI;
+    R(t+1) = R(t) + dR;
+end
+
+disp(S);
+disp(I);
+disp(R);
+
+figure;
+plot(t1, S, 'b', 'LineWidth', 2);
+hold on;
+plot(t1, I, 'r', 'LineWidth', 2);
+plot(t1, R, 'g', 'LineWidth', 2);
+xlabel('Time');
+ylabel('Population');
+title('SIR Model: Population over Time');
+legend('Susceptible', 'Infected', 'Recovered');
+grid on;
+hold off;
+
+S_even = S;
+I_even = I;
+R_even = R;
+t_even = t1;
+
+for t = 1:2:T/h-1
+    S_odd = newton_interpolate(t1(t), t_even, S_even, 2);  
+    S(t+1) = S_odd;
+    I_odd = newton_interpolate(t1(t), t_even, I_even, 2);  
+    I(t+1) = I_odd;
+    R_odd = newton_interpolate(t1(t), t_even, R_even, 2);  % Linear interpolation (2 points)
+    R(t+1) = R_odd;
+end
+
+% part 1 aspect for comparison
+h_model = 1;
+t_model = 0:h_model:T;
+S_model = zeros(1, T/h_model + 1);
+I_model = zeros(1, T/h_model + 1);
+R_model = zeros(1, T/h_model + 1);
+
+S_model(1) = S0;
+I_model(1) = I0;
+R_model(1) = R0;
+
+for t = 1:T/h_model
+    dS = dSdt(S_model(t), I_model(t)) * h_model;
+    dI = dIdt(S_model(t), I_model(t)) * h_model;
+    dR = dRdt(I_model(t)) * h_model;
+    S_model(t+1) = S_model(t) + dS;
+    I_model(t+1) = I_model(t) + dI;
+    R_model(t+1) = R_model(t) + dR;
+end
+
+% Computation for L2 error  linear interpolation
+E_L2_S_linear = 0;
+E_L2_I_linear = 0;
+E_L2_R_linear = 0;
+
+Nint = length(t2); 
+for k = 1:Nint
+   
+    S_int = newton_interpolate(t2(k), t_even, S_even, 2);  
+    I_int = newton_interpolate(t2(k), t_even, I_even, 2);  
+    R_int = newton_interpolate(t2(k), t_even, R_even, 2);  
+    
+    
+    S_model_val = S_model(2*k - 1);
+    I_model_val = I_model(2*k - 1);
+    R_model_val = R_model(2*k - 1);
+    
+    
+    E_L2_S_linear = E_L2_S_linear + (S_int - S_model_val)^2;
+    E_L2_I_linear = E_L2_I_linear + (I_int - I_model_val)^2;
+    E_L2_R_linear = E_L2_R_linear + (R_int - R_model_val)^2;
+end
+
+
+E_L2_S_linear = E_L2_S_linear / Nint;
+E_L2_I_linear = E_L2_I_linear / Nint;
+E_L2_R_linear = E_L2_R_linear / Nint;
+
+disp(['L2 error for S (Linear Interpolation): ', num2str(E_L2_S_linear)]);
+disp(['L2 error for I (Linear Interpolation): ', num2str(E_L2_I_linear)]);
+disp(['L2 error for R (Linear Interpolation): ', num2str(E_L2_R_linear)]);
+
+% Computation of L2 error using quadratic interpolation 
+E_L2_S_quadratic = 0;
+E_L2_I_quadratic = 0;
+E_L2_R_quadratic = 0;
+
+
+for k = 1:Nint
+    
+    S_int = newton_interpolate(t2(k), t_even, S_even, 3);  
+    I_int = newton_interpolate(t2(k), t_even, I_even, 3);  
+    R_int = newton_interpolate(t2(k), t_even, R_even, 3); 
+    
+    S_model_val = S_model(2*k - 1); 
+    I_model_val = I_model(2*k - 1);
+    R_model_val = R_model(2*k - 1);
+    
+   
+    E_L2_S_quadratic = E_L2_S_quadratic + (S_int - S_model_val)^2;
+    E_L2_I_quadratic = E_L2_I_quadratic + (I_int - I_model_val)^2;
+    E_L2_R_quadratic = E_L2_R_quadratic + (R_int - R_model_val)^2;
+end
+
+E_L2_S_quadratic = E_L2_S_quadratic / Nint;
+E_L2_I_quadratic = E_L2_I_quadratic / Nint;
+E_L2_R_quadratic = E_L2_R_quadratic / Nint;
+
+disp(['L2 error for S (Quadratic Interpolation): ', num2str(E_L2_S_quadratic)]);
+disp(['L2 error for I (Quadratic Interpolation): ', num2str(E_L2_I_quadratic)]);
+disp(['L2 error for R (Quadratic Interpolation): ', num2str(E_L2_R_quadratic)]);
+
+function y_odd = newton_interpolate(t_odd, t_even, y_even, n)
+    d_diff = zeros(n, n);
+    d_diff(:, 1) = y_even(1:n)';
+  
+    for j = 2:n
+        for i = 1:n-j+1
+            d_diff(i,j) = (d_diff(i+1,j-1) - d_diff(i,j-1)) / (t_even(i+j-1) - t_even(i));
+        end
+    end
+    
+    y_odd = d_diff(1, 1);
+    product_term = 1;
+    
+    for j = 2:n
+        product_term = product_term * (t_odd - t_even(j-1));
+        y_odd = y_odd + product_term * d_diff(1, j);
+    end
+end
+
+disp('Error Table for Linear and Quadratic Interpolation:');
+disp(' ');
+disp('Interpolation Method | S(t) Error | I(t) Error | R(t) Error');
+disp('-----------------------------------------------------------');
+disp(['Linear Interpolation  | ', num2str(E_L2_S_linear), ' | ', num2str(E_L2_I_linear), ' | ', num2str(E_L2_R_linear)]);
+disp(['Quadratic Interpolation | ', num2str(E_L2_S_quadratic), ' | ', num2str(E_L2_I_quadratic), ' | ', num2str(E_L2_R_quadratic)]);
+
+
+% COMMENT: The quadratic interpolation providies smaller errors do to the
+% facts the functions form more of a parabolic shape / non-linear for the which the
+% quadratic form is better suited for compared to the linear interpolation.
+  
