@@ -1,0 +1,76 @@
+clc;                                              
+clear all;
+% Define parameters
+N = 1000;  % Total population
+S0 = 990;  % Initial susceptible
+I0 = 10;   % Initial infected
+R0 = 0;    % Initial recovered
+y0 = [S0, I0, R0]; % Initial conditions
+T = 100;   % Total simulation time (days)
+h = 1;     % Time step
+
+% Disease scenarios
+scenarios = struct('SeasonalInfluenza', struct('beta', 0.3, 'gamma', 0.1), ...
+                   'COVID19', struct('beta', 1.0, 'gamma', 0.1), ...
+                   'Measles', struct('beta', 2.0, 'gamma', 0.2));
+
+% Time array
+t = 0:h:T;
+
+% Initialize figure
+figure;
+
+% Loop through scenarios
+fields = fieldnames(scenarios);
+for idx = 1:numel(fields)
+    scenario = fields{idx};
+    beta = scenarios.(scenario).beta;
+    gamma = scenarios.(scenario).gamma;
+
+    % Initialize arrays
+    S = zeros(1, length(t));
+    I = zeros(1, length(t));
+    R = zeros(1, length(t));
+    S(1) = S0; I(1) = I0; R(1) = R0;
+
+    % Runge-Kutta method
+    for i = 1:(length(t)-1)
+        % Current values
+        y = [S(i), I(i), R(i)];
+        
+        % RK4 calculations
+        k1 = sir_ode(y, beta, gamma, N);
+        k2 = sir_ode(y + h*k1/2, beta, gamma, N);
+        k3 = sir_ode(y + h*k2/2, beta, gamma, N);
+        k4 = sir_ode(y + h*k3, beta, gamma, N);
+        
+        % Update values
+        y_next = y + h*(k1 + 2*k2 + 2*k3 + k4)/6;
+        S(i+1) = y_next(1);
+        I(i+1) = y_next(2);
+        R(i+1) = y_next(3);
+    end
+
+    % Plot results
+    subplot(3, 1, idx);
+    plot(t, S, 'b', 'DisplayName', 'S(t): Susceptible');
+    hold on;
+    plot(t, I, 'r', 'DisplayName', 'I(t): Infected');
+    plot(t, R, 'g', 'DisplayName', 'R(t): Recovered');
+    title(sprintf('%s (\\beta=%.1f, \\gamma=%.1f)', scenario, beta, gamma));
+    xlabel('Time (days)');
+    ylabel('Population');
+    legend;
+    grid on;
+end
+
+function dydt = sir_ode(y, beta, gamma, N)
+    % SIR model ODEs
+    S = y(1);
+    I = y(2);
+    R = y(3);
+    dS = -beta * S * I / N;
+    dI = beta * S * I / N - gamma * I;
+    dR = gamma * I;
+    dydt = [dS, dI, dR];
+end
